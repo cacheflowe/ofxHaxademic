@@ -1,7 +1,7 @@
 #include "Webcambuffer.h"
 
 ofFbo bufferr;
-ofVideoGrabber cam;
+ofVideoGrabber webcam;
 bool mirror = true;
 
 WebcamBuffer::WebcamBuffer(int width, int height) {
@@ -14,34 +14,34 @@ WebcamBuffer::WebcamBuffer(int width, int height, string deviceName) {
 
 void WebcamBuffer::init(int width, int height, string deviceName) {
 	// init FBO
-	bufferr.allocate(width, height, GL_RGBA); // GL_RGBA32F
+	bufferr.allocate(width, height, GL_RGBA);
 
 	// add listener to draw before main draw thread
 	ofAddListener(ofEvents().update, this, &WebcamBuffer::appUpdate);
 
-	// init cam
-	cam.setVerbose(true);
-	
 	// list devices
-	vector<ofVideoDevice> devices = cam.listDevices();
+	vector<ofVideoDevice> devices = webcam.listDevices();
 	for (vector<ofVideoDevice>::iterator it = devices.begin(); it != devices.end(); ++it) {
 		cout << "id: " << it->id << endl;
 		cout << "deviceName: " << it->deviceName << endl;
 		cout << "hardwareName: " << it->hardwareName << endl;
+		if (it->bAvailable == false) cout << "unavailable!" << endl;
 		cout << "-------" << endl;
 
 		// grab specific device if defined
 		if (deviceName != "") {
 			if (it->deviceName == deviceName) {
-				cam.setDeviceID(it->id);
+				webcam.setDeviceID(it->id);
 				break;
 			}
 		}
 	}
 
 	// init with specific size
-	cam.setup(width, height);
-	// cam.setDeviceID(12);
+	webcam.setVerbose(true);
+	webcam.setDesiredFrameRate(60);
+	webcam.setup(width, height);
+	ofSetVerticalSync(true);
 }
 
 WebcamBuffer::~WebcamBuffer() {
@@ -56,22 +56,25 @@ ofFbo WebcamBuffer::getBuffer() {
 }
 
 ofVideoGrabber WebcamBuffer::getVideoGrabber() {
-	return cam;
+	return webcam;
 }
 
 void WebcamBuffer::appUpdate(ofEventArgs &e)
 {
 	// update camera
-	cam.update();
+	webcam.update();
 
-	// init context
-	bufferr.begin();
-	ofBackground(0);
-	if (mirror == true) {
-		cam.draw(cam.getWidth(), 0, -cam.getWidth(), cam.getHeight());	// mirrored
-	} else {
-		cam.draw(0, 0);
+	// draw new frame to buffer
+	if (webcam.isFrameNew()) {
+		// init context
+		bufferr.begin();
+		ofBackground(0);
+		if (mirror == true) {
+			webcam.draw(webcam.getWidth(), 0, -webcam.getWidth(), webcam.getHeight());	// mirrored
+		} else {
+			webcam.draw(0, 0);
+		}
+		bufferr.end();
 	}
-	bufferr.end();
 }
 
